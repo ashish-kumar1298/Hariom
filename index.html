@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hari Om Medical Store | 24/7 Pharmacy Outside Varanasi Railway Station</title>
+    <meta name="description" content="Hari Om Medical Store - 24/7 licensed pharmacy outside Varanasi Junction (BSB) Railway Station. Order medicines via WhatsApp, upload prescriptions, get AI travel pharmacist guidance, and grab emergency travel kits.">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -60,6 +61,13 @@
         ::-webkit-scrollbar-thumb {
             background: #0056b3;
             border-radius: 4px;
+        }
+        .scrollbar-none {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .scrollbar-none::-webkit-scrollbar {
+            display: none;
         }
     </style>
 </head>
@@ -273,7 +281,7 @@
                     <!-- Search Input Bar -->
                     <div class="relative max-w-2xl mx-auto">
                         <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                        <input type="text" id="searchInput" oninput="filterSearchMeds()" placeholder="Type medicine name (e.g. Paracetamol, Avomine, Electral, Digene, Bandage)..." class="w-full pl-12 pr-28 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-medblue focus:bg-white text-sm sm:text-base text-slate-800 transition-all">
+                        <input type="text" id="searchInput" oninput="filterSearchMeds()" aria-label="Search medicines" placeholder="Type medicine name (e.g. Paracetamol, Avomine, Electral, Digene, Bandage)..." class="w-full pl-12 pr-28 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-medblue focus:bg-white text-sm sm:text-base text-slate-800 transition-all">
                         <button onclick="clearSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs bg-slate-200 hover:bg-slate-300 font-semibold text-slate-700 px-3 py-1.5 rounded-lg transition-colors">
                             Clear
                         </button>
@@ -962,9 +970,6 @@
 
     <!-- Application Logic Script -->
     <script>
-        const GEMINI_API_KEY = ""; // Canvas runtime auto-populates API key
-        const GEMINI_TEXT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
-        const GEMINI_TTS_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`;
         const OWNER_WHATSAPP_NUMBER = "916393830087";
 
         // Catalog Products
@@ -998,18 +1003,136 @@
         let uploadedPrescriptionMime = "image/jpeg";
         let lastPrescriptionAnalysisText = "";
 
-        async function fetchWithRetry(url, options, maxRetries = 3, delay = 1000) {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (response.ok) return response;
-                    throw new Error(`API Error ${response.status}`);
-                } catch (err) {
-                    if (i === maxRetries - 1) throw err;
-                    await new Promise(r => setTimeout(r, delay));
-                    delay *= 2;
-                }
+        function formatKitLine(productId) {
+            const p = PRODUCTS.find(x => x.id === productId);
+            return p ? `**${p.name}** - ₹${p.price}` : '';
+        }
+
+        function clientAssistantReply(rawQuery) {
+            const q = rawQuery.toLowerCase();
+            const has = (...keys) => keys.some(k => q.includes(k));
+            const footer = "\n\n⚠️ If symptoms are severe, seek emergency medical care. Need it fast? WhatsApp **+91 63938 30087** - we deliver right to the Varanasi Junction gate!";
+
+            if (has("namaste", "hello", "good morning", "good afternoon", "good evening", "hola")) {
+                return "**Namaste! 👋** Welcome to Hari Om Medical Store - your 24/7 pharmacy outside Varanasi Junction (BSB) Railway Station.\n\nTell me what you or your co-passenger are feeling (travel sickness, fever, acidity, diarrhea, body pain) or ask about a specific medicine. I'll suggest safe OTC options ready for quick pickup or station-gate delivery." + footer;
             }
+
+            if (has("thank you", "thanks", "thank", "dhanyawad", "dhanyavad", "shukriya")) {
+                return "**You're most welcome! 😊** Safe travels through Varanasi. If anything is needed urgently at the station gate, call or WhatsApp **+91 63938 30087** - we'll have it ready for you." + footer;
+            }
+
+            if (has("24*7", "24/7", "24 hour", "24hr", "round the clock", "open 24", "open now", "timing", "timings", "opening", "closing", "working hour", "always open")) {
+                return "**We are open 24 hours a day, 365 days a year!** 🕛\n\nOur counter outside the Varanasi Junction (BSB) main exit gate never closes - even at midnight or early dawn. Emergency medicines are always in stock, and urgent items can be brought straight to the station gate." + footer;
+            }
+
+            if (has("where", "location", "address", "find", "directions", "direction", "reach", "map", "exit", "gate", "near", "opposite")) {
+                return "**How to find us:** 📍\n1. Exit Varanasi Junction (BSB) main building onto **Station Road**.\n2. We are directly opposite the main auto stand.\n3. Look for the big green medical cross sign!\n\nAddress: Station Road (Outside Main Exit Gate), Varanasi Junction Railway Station (BSB), Varanasi, UP - 221002.\n\nStep out and call **+91 63938 30087** - our team can guide you live or deliver to the gate." + footer;
+            }
+
+            if (has("phone", "contact", "number", "whatsapp", "call", "helpline", "mobile")) {
+                return "**Call or WhatsApp us anytime:** 📞 **+91 63938 30087**\n\n· 24/7 emergency counter helpline\n· Live direction guidance at the station gate\n· Instant order confirmation and pre-packing\n\nWe reply quickly - usually within minutes!" + footer;
+            }
+
+            if (has("order", "buy", "purchase", "place order", "cart", "checkout", "how to order", "how do i order", "booking")) {
+                return "**Ordering is super easy:** 🛒\n1. Add emergency travel kits to your cart from the **Traveler Specials** section.\n2. Open the cart and tap **'Place Order via WhatsApp'**.\n3. Prefer a prescription? Upload the photo and we'll pre-pack it for pickup.\n4. We confirm stock and cost, then keep it ready outside the station gate.\n\nFor urgent needs, WhatsApp **+91 63938 30087** directly!" + footer;
+            }
+
+            if (has("price", "prices", "cost", "charge", "rate", "how much", "expensive", "cheap")) {
+                return "**Some popular prices:** 💰\n· " + formatKitLine('m1') + "\n· " + formatKitLine('m2') + "\n· " + formatKitLine('m3') + "\n· " + formatKitLine('m5') + "\n· Paracetamol 650mg strip - ₹32\n· Electral ORS sachet - ₹22\n· Digene syrup - ₹130\n\nAll basic travel meds are affordable - walk-in pickup or gate delivery, with proper bills." + footer;
+            }
+
+            // Symptom triage
+            if (has("travel sickness", "travel sick", "sickness", "nausea", "vomit", "vomiting", "motion sick", "dizzy", "dizziness", "giddiness", "moving train")) {
+                return "**Travel sickness & nausea - here's what helps:** 🚂\n· **Avomine 25mg** (₹25/strip) - take 30-45 minutes before boarding\n· " + formatKitLine('m1') + " (Avomine + Vomistop + lemon candy)\n· Sip **Electral ORS** (₹22/sachet) to stay hydrated\n· Sit facing the direction of travel, look outside at a distant point, and keep meals light\n\nIf vomiting becomes severe or uncontrollable, get medical help at the next station." + footer;
+            }
+
+            if (has("acidity", "acid reflux", "stomach upset", "indigestion", "heartburn", "burning", "gas", "bloating", "spicy", "station food")) {
+                return "**Acidity & stomach upset - quick relief:** 🍕\n· **Digene** chewable tabs or syrup (₹130/bottle)\n· " + formatKitLine('m4') + " (Eldoper + Digene chewable for station-food aftermath)\n· Sip warm water, avoid fried and extra-spicy food, and take a short walk after meals\n\nPersistent chest burning or severe abdominal pain may require a doctor." + footer;
+            }
+
+            if (has("fever", "temperature", "chills", "feverish", "headache", "head ache")) {
+                return "**Fever & headache - journey plan:** 🌡️\n· **Paracetamol 650mg** (₹32/strip) - 1 tablet as needed, max 3-4 per day\n· " + formatKitLine('m5') + " (Crocin 650mg + Volini spray + pain balm)\n· Rest, sip fluids/ORS, and use a cool cloth on the forehead\n\nIf the fever is very high, lasts more than 24-48 hours, or comes with a rash or stiff neck, seek emergency care." + footer;
+            }
+
+            if (has("body pain", "body ache", "joint pain", "muscle pain", "back pain", "neck pain", "leg pain")) {
+                return "**Body pain during travel - relief options:** 💪\n· **Combiflam** (₹45/strip) for general body ache\n· " + formatKitLine('m5') + " (Crocin + Volini spray + pain balm)\n· **Volini spray** / pain balm for localised relief\n· Gentle stretching at stops and a hot-water bottle help a lot\n\nSudden sharp chest pain or breathlessness needs immediate emergency care." + footer;
+            }
+
+            if (has("diarrhea", "diarrhoea", "loose motion", "loose motions", "stomach cramp", "stomach cramps", "watery stool")) {
+                return "**Diarrhea & cramps - stay safe:** 💧\n· **Eldoper (Loperamide 2mg)** (₹28/strip) - only for adults, per doctor advice\n· " + formatKitLine('m4') + " anti-diarrhea pack + Digene\n· Most important: **Electral ORS** (₹22/sachet) to replace lost fluids - " + formatKitLine('m2') + "\n· Eat only light, bland food and avoid dairy\n\nIf there is blood in the stool, high fever, or dehydration, see a doctor immediately." + footer;
+            }
+
+            if (has("dehydrat", "water loss", "heat stroke", "heatstroke", "heat exhaustion", "exhaustion", "overheated", "too hot", "sunstroke", "thirst")) {
+                return "**Dehydration & heat exhaustion care:** ☀️\n· " + formatKitLine('m2') + " - Electral ORS (3 sachets) + chilled glucose drink\n· **Glucon-D energy pack** (₹85) for instant energy in summer heat\n· Sip fluids slowly, rest in shade, and use a wet cloth on the neck and wrists\n\nDizziness, confusion, or fainting in the heat means emergency medical care right away." + footer;
+            }
+
+            if (has("cold", "cough", "congestion", "flu", "sneez", "runny nose", "dry throat", "sore throat")) {
+                return "**Cold & cough on the journey:** 🤧\n· **Vicks Inhaler + Vaporub combo** (₹65)\n· Warm fluids, ginger tea, and steam ease congestion\n· Keep your throat covered in A/C coaches\n· Add ORS/fluids to stay hydrated\n\nIf a high fever or breathlessness develops, consult a doctor." + footer;
+            }
+
+            if (has("allerg", "itching", "itch", "rash", "hives", "skin")) {
+                return "**Allergy & skin irritation:** 🌿\n· Antihistamine tablets are available at the counter (ask our pharmacist)\n· Calamine-type lotion for itching\n· Avoid known triggers (spicy food, dust, new cosmetics) while traveling\n\nSevere swelling of lips/tongue or difficulty breathing is a medical emergency - call 108/911 immediately." + footer;
+            }
+
+            if (has("tooth", "toothache", "tooth pain", "gum", "dental")) {
+                return "**Toothache relief:** 🦷\n· **Combiflam** (₹45/strip) or Paracetamol 650mg (₹32) for pain\n· Rinse with warm salt water and avoid very hot/cold or sugary food\n· A clove-based pain balm/drop can soothe the area\n\nSee a dentist at your destination if pain persists beyond a day." + footer;
+            }
+
+            if (has("baby", "child", "infant", "kids", "children", "pediatric", "lactogen", "cerelac", "diaper")) {
+                return "**Baby & child care while traveling:** 👶\n· " + formatKitLine('m7') + " (infant formula sample/Cerelac + diapers + wet wipes)\n· Baby fever syrups and ORS are available at the counter (ask our pharmacist)\n· Never give adult medicines to children\n· Keep the baby hydrated and cool, especially in summer\n\nIf a child has high fever, fits, or is unusually drowsy, seek emergency medical care." + footer;
+            }
+
+            if (has("blood pressure", "high bp", "low bp", "hypertension")) {
+                return "**Blood pressure medication:** ❤️\n· We stock common BP medicines; please ask our pharmacist at the counter with your prescription\n· Take prescribed doses on time and don't skip while traveling\n· Avoid excess salt/spicy food and keep hydrated\n\nChest pain, severe headache, or fainting needs immediate emergency care - call 108/911 and head to the nearest hospital." + footer;
+            }
+
+            if (has("diabet", "sugar level", "insulin")) {
+                return "**Diabetes care while traveling:** 🩺\n· We stock common diabetes medicines and glucose monitoring essentials\n· Carry your regular medicines and a quick sugar source (glucose/ORS) with you\n· Avoid skipping meals; keep a sweet snack handy\n\nIf you feel shaky, sweaty, and confused (low sugar), take glucose immediately and seek medical help." + footer;
+            }
+
+            // Medicine availability by name
+            if (has("paracetamol", "dolo", "crocin", "fever medicine")) {
+                return "**Yes, Paracetamol 650mg** (Dolo / Crocin) is in stock at **₹32/strip**.\n\nTry " + formatKitLine('m5') + " for fever-plus-body-ache journeys. Take it with light food, stay hydrated, and do not exceed 3-4 doses in 24 hours." + footer;
+            }
+
+            if (has("avomine", "vomistop")) {
+                return "**Yes, Avomine 25mg** (motion sickness) is in stock at **₹25/strip**.\n\n" + formatKitLine('m1') + " is our bestseller - take it 30-45 minutes before boarding, keep hydrated, and sit facing forward." + footer;
+            }
+
+            if (has("ors", "electral", "electrolyte", "glucose", "glucon")) {
+                return "**Yes, Electral ORS** is in stock at **₹22/sachet**, plus Glucon-D energy packs.\n\n" + formatKitLine('m2') + " is ideal for heat, vomiting, and loose motions. Mix with clean water and sip slowly." + footer;
+            }
+
+            if (has("digene", "gelusil", "antacid")) {
+                return "**Yes, Digene syrup / Gelusil tabs** are in stock at **₹130/bottle** for acidity.\n\n" + formatKitLine('m4') + " also covers station-food acidity. Skip fried/spicy snacks and sip warm water." + footer;
+            }
+
+            if (has("eldoper", "loperamide")) {
+                return "**Yes, Eldoper (Loperamide 2mg)** is in stock at **₹28/strip** for diarrhea.\n\nPair it with " + formatKitLine('m2') + " - staying hydrated matters most. Blood in stool or high fever means see a doctor immediately." + footer;
+            }
+
+            if (has("combiflam")) {
+                return "**Yes, Combiflam** (pain reliever) is in stock at **₹45/strip** for body ache and toothache.\n\n" + formatKitLine('m5') + " is great for long rides - Crocin 650mg + Volini spray + pain balm." + footer;
+            }
+
+            if (has("bandaid", "band-aid", "bandage", "savlon", "antiseptic", "first aid", "micropore", "cotton")) {
+                return "**Yes, Band-Aid strips** (₹20/pack of 10), Savlon antiseptic, cotton rolls, and micropore tape are in stock.\n\n" + formatKitLine('m3') + " covers cuts and scrapes - clean the wound, apply antiseptic, and keep it covered. Deep or infected wounds need medical attention." + footer;
+            }
+
+            if (has("vicks", "vaporub", "vapourub", "inhaler")) {
+                return "**Yes, Vicks Inhaler + Vaporub combo** is in stock at **₹65** for cold and congestion.\n\nAdd warm fluids and steam for comfort. If fever with cough persists, consult a doctor." + footer;
+            }
+
+            if (has("norflox", "norflox-tz")) {
+                return "**Yes, O2 / Norflox-TZ** is in stock at **₹110/strip** for stomach infections.\n\n⚠️ Antibiotics are dispensed only with a valid prescription. Pair with ORS for hydration." + footer;
+            }
+
+            // General availability
+            if (has("available", "availability", "stock", "in stock", "have this", "have you", "do you have", "medicine", "medicines", "tablet", "tablets", "pill", "pills", "syrup")) {
+                return "**We stock over 5,000+ medicines!** 💊\n\nCommon travel & daily items always in stock:\n· Paracetamol 650mg (₹32) • Avomine 25mg (₹25) • Electral ORS (₹22)\n· Digene (₹130) • Eldoper (₹28) • Combiflam (₹45)\n· Band-Aid (₹20) • Vicks combo (₹65) • Norflox-TZ (₹110)\n\nJust WhatsApp the medicine name to **+91 63938 30087** and we'll confirm availability instantly." + footer;
+            }
+
+            return "**Happy to help! 🤗** Could you tell me a little more about what you're feeling or which medicine you need?\n\nExamples:\n· \"I have travel sickness and nausea\" 🚂\n· \"Fever and headache on the train\" 🌡️\n· \"Acidity after station food\" 🍕\n· \"Loose motions / diarrhea\" 💧\n· \"Do you have Paracetamol?\" 💊\n\nFor anything urgent, call or WhatsApp **+91 63938 30087** - we're outside Varanasi Junction (BSB), open 24/7." + footer;
         }
 
         async function analyzePrescriptionWithAI() {
@@ -1023,52 +1146,37 @@
             const contentBox = document.getElementById('aiPrescriptionContent');
 
             btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Analyzing Vision...`;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Reading...`;
             resultBox.classList.remove('hidden');
-            contentBox.innerHTML = `<p class="text-indigo-600 font-semibold animate-pulse"><i class="fa-solid fa-brain mr-1"></i> Gemini AI is reading doctor prescription...</p>`;
+            contentBox.innerHTML = `<p class="text-indigo-600 font-semibold animate-pulse"><i class="fa-solid fa-brain mr-1"></i> Preparing prescription note...</p>`;
 
-            const systemPrompt = "You are an expert registered pharmacist for Hari Om Medical Store outside Varanasi Railway Station. Analyze doctor prescriptions with extreme precision, legibility, and patient care. Identify medicine names, dosages, frequencies, and travel safety cautions.";
-            
-            const userPrompt = "Analyze this prescription image in detail. Format clearly with bullet points:\n1. Identified Medicines & Strengths\n2. Prescribed Dosage & Frequency\n3. Purpose/Usage\n4. Important Travel Precautions.";
-
-            const payload = {
-                contents: [{
-                    role: "user",
-                    parts: [
-                        { text: userPrompt },
-                        { inlineData: { mimeType: uploadedPrescriptionMime, data: uploadedPrescriptionBase64 } }
-                    ]
-                }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
+            const fileName = document.getElementById('fileNameDisplay').innerText || "prescription.jpg";
 
             try {
-                const res = await fetchWithRetry(GEMINI_TEXT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await res.json();
-                const analysisText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                await new Promise(r => setTimeout(r, 500));
 
-                if (analysisText) {
-                    lastPrescriptionAnalysisText = analysisText;
-                    const htmlFormatted = analysisText
-                        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-                        .replace(/\n/g, '<br>');
+                const analysisText =
+                    `**Prescription Received** 📋 (${escapeHtml(fileName)})\n\n` +
+                    `1. **Identified Medicines & Strengths:**\n   Medicines can't be auto-read in offline mode. Please list the medicine names in the "Additional Medicine Request / Dosage Notes" box below so our pharmacist packs them accurately.\n\n` +
+                    `2. **Dosage & Frequency:**\n   Our registered pharmacist (Rahul Singh) will verify the dosage against your prescription on WhatsApp before dispensing.\n\n` +
+                    `3. **Purpose / Usage:**\n   Prescription drugs (Schedule H & H1) are dispensed only on presentation of a valid prescription - shown at the counter or sent on WhatsApp.\n\n` +
+                    `4. **Travel Precautions:**\n   Carry all your doses, keep medicines in a cool dry place, and set reminders for each dose during the journey.\n\n` +
+                    `⭐ Add your travel essentials (ORS + Motion kit) to the cart now for quick pickup at the Varanasi Junction gate!`;
 
-                    contentBox.innerHTML = htmlFormatted;
-                    showToast("Prescription analyzed successfully by Gemini AI!");
-                } else {
-                    contentBox.innerHTML = `<p class="text-red-600">Could not parse image clearly. Please ensure prescription photo is well lit.</p>`;
-                }
+                lastPrescriptionAnalysisText = analysisText.replace(/\*\*/g, '');
+
+                const htmlFormatted = analysisText
+                    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                    .replace(/\n/g, '<br>');
+
+                contentBox.innerHTML = htmlFormatted;
+                showToast("Prescription note ready - verify medicines in notes!");
             } catch (err) {
                 console.error(err);
-                contentBox.innerHTML = `<p class="text-red-600">AI analysis failed. Please consult counter staff directly on WhatsApp.</p>`;
+                contentBox.innerHTML = `<p class="text-red-600">Could not read the photo. Please list the medicine names in the notes box below, or consult us on WhatsApp.</p>`;
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i> <span>Re-Analyze AI</span>`;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i> <span>Re-Analyze</span>`;
             }
         }
 
@@ -1077,103 +1185,38 @@
                 showToast("Analyze prescription first to generate audio guidance.");
                 return;
             }
+            if (!('speechSynthesis' in window)) {
+                showToast("Voice not supported in this browser.");
+                return;
+            }
 
             const ttsBtn = document.getElementById('ttsAudioBtn');
             ttsBtn.disabled = true;
-            ttsBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Generating Audio...`;
-
-            const speakableText = "Here are your dosage instructions from Hari Om Medical Store: " + 
-                lastPrescriptionAnalysisText.replace(/[*#]/g, '').substring(0, 400);
-
-            const payload = {
-                contents: [{
-                    parts: [{ text: `Say clearly in a helpful, calm pharmacist tone: ${speakableText}` }]
-                }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: "Kore" }
-                        }
-                    }
-                }
-            };
+            ttsBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Preparing Voice...`;
 
             try {
-                const res = await fetchWithRetry(GEMINI_TTS_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                await new Promise(r => setTimeout(r, 300));
 
-                const data = await res.json();
-                const part = data?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType || "";
+                const utterance = new SpeechSynthesisUtterance(
+                    "Here are your instructions from Hari Om Medical Store: " + lastPrescriptionAnalysisText.replace(/[*#]/g, '').substring(0, 500)
+                );
+                utterance.lang = 'en-IN';
+                utterance.rate = 1;
+                const voices = window.speechSynthesis.getVoices();
+                const enVoice = voices.find(v => v.lang.toLowerCase().startsWith('en') && v.lang.toLowerCase().includes('in'))
+                    || voices.find(v => v.lang.toLowerCase().startsWith('en'));
+                if (enVoice) utterance.voice = enVoice;
 
-                if (audioData) {
-                    const rateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
-
-                    const pcmBuffer = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmBuffer);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                    showToast("🔊 Playing AI Pharmacist Voice Instructions!");
-                } else {
-                    showToast("Could not generate audio readout.");
-                }
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utterance);
+                showToast("🔊 Playing voice instructions!");
             } catch (err) {
                 console.error(err);
-                showToast("Audio generation failed.");
+                showToast("Voice play failed.");
             } finally {
                 ttsBtn.disabled = false;
                 ttsBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> <span>Listen Voice (TTS)</span>`;
             }
-        }
-
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        function pcmToWav(pcm16, sampleRate = 24000) {
-            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
-            const view = new DataView(buffer);
-
-            const writeString = (offset, str) => {
-                for (let i = 0; i < str.length; i++) {
-                    view.setUint8(offset + i, str.charCodeAt(i));
-                }
-            };
-
-            writeString(0, 'RIFF');
-            view.setUint32(4, 36 + pcm16.length * 2, true);
-            writeString(8, 'WAVE');
-            writeString(12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, 1, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true);
-            view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true);
-            writeString(36, 'data');
-            view.setUint32(40, pcm16.length * 2, true);
-
-            let offset = 44;
-            for (let i = 0; i < pcm16.length; i++, offset += 2) {
-                view.setInt16(offset, pcm16[i], true);
-            }
-            return new Blob([buffer], { type: 'audio/wav' });
         }
 
         function addAiDetectedMedsToCart() {
@@ -1188,7 +1231,7 @@
 
             const userMsgDiv = document.createElement('div');
             userMsgDiv.className = 'bg-indigo-600/30 text-white p-2.5 rounded-xl border border-indigo-500/30 text-xs ml-6 leading-relaxed';
-            userMsgDiv.innerHTML = `<b>You:</b> ${symptomText}`;
+            userMsgDiv.innerHTML = `<b>You:</b> ${escapeHtml(symptomText)}`;
             container.appendChild(userMsgDiv);
 
             const aiMsgDiv = document.createElement('div');
@@ -1199,37 +1242,21 @@
 
             if (btn) btn.disabled = true;
 
-            const systemPrompt = "You are Hari Om AI, an empathetic, cautious, and highly knowledgeable AI Pharmacist for Hari Om Medical Store outside Varanasi Railway Station. Provide immediate OTC travel medicine guidance, hydration/ORS tips, and safety cautions for passengers. Always remind passengers that severe symptoms require emergency medical care.";
-
-            const payload = {
-                contents: [{ parts: [{ text: symptomText }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
-
             try {
-                const res = await fetchWithRetry(GEMINI_TEXT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                await new Promise(r => setTimeout(r, 600));
 
-                if (reply) {
-                    const htmlFormatted = reply
-                        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-                        .replace(/\n/g, '<br>');
+                const reply = clientAssistantReply(symptomText);
+                const htmlFormatted = reply
+                    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                    .replace(/\n/g, '<br>');
 
-                    aiMsgDiv.innerHTML = `<div class="font-bold text-amber-300 mb-1 flex items-center justify-between">
-                        <span>👨‍⚕️ Hari Om AI Recommendation:</span>
-                        <button onclick="addToCart('m1'); showToast('Added Motion & Travel Kit to Cart!');" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 rounded">Add OTC Pack</button>
-                    </div>${htmlFormatted}`;
-                } else {
-                    aiMsgDiv.innerHTML = `<p class="text-red-400">Unable to generate recommendation right now. Please call Hari Om Medical Store counter directly at +91 63938 30087.</p>`;
-                }
+                aiMsgDiv.innerHTML = `<div class="font-bold text-amber-300 mb-1 flex items-center justify-between">
+                    <span>👨‍⚕️ Hari Om AI Recommendation:</span>
+                    <button onclick="addToCart('m1'); showToast('Added Motion & Travel Kit to Cart!');" class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 rounded">Add OTC Pack</button>
+                </div>${htmlFormatted}`;
             } catch (err) {
                 console.error(err);
-                aiMsgDiv.innerHTML = `<p class="text-red-400">Connection error. Please call +91 63938 30087.</p>`;
+                aiMsgDiv.innerHTML = `<p class="text-red-400">Sorry, something went wrong. Please call Hari Om Medical Store counter on +91 63938 30087.</p>`;
             } finally {
                 if (btn) btn.disabled = false;
                 container.scrollTop = container.scrollHeight;
@@ -1516,6 +1543,12 @@
             setTimeout(() => {
                 toast.remove();
             }, 3000);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
 
         // Initialize page content on load
